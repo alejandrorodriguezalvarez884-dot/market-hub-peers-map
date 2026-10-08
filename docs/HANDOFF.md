@@ -26,7 +26,7 @@ y `/api/peers` da 401.
 
 - **Dominio**: mapeo `peers.themarkethub.app` → `peer-map`, con un CNAME `peers` →
   `ghs.googlehosted.com` en Cloudflare, en modo "solo DNS" (lo puso el agente desde el navegador,
-  con la sesión del usuario, el 2026-10-08). El certificado tardó unos 40 minutos.
+  con la sesión del usuario, el 2026-10-08). El certificado tardó entre 20 y 45 minutos.
 - **El enlace `Peers` está en la navegación de My Hub** (Tools) y desplegado en el portal
   (`market-hub-00032-84z`), Fundamentals Lab (`fundamentals-lab-00016-kjp`, ya sin su página de
   peers) y el radar del hub (`earnings-radar-hub-00011-h8g`). En el Playground está en el código
