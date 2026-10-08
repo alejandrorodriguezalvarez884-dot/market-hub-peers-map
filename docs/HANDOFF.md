@@ -19,22 +19,23 @@ Decisiones del usuario (2026-10-08):
 
 ## Dónde estamos
 
-**Desplegado el 2026-10-08 como `peer-map-00001-lbn`** (Cloud Run, `europe-west1`, proyecto
-`arctic-robot-474306-g3`, bucket `arctic-robot-474306-g3-peer-map`, detrás del login del hub).
-En `https://peer-map-3qwezbjyfq-ew.a.run.app` responde: `/api/health` 200, y sin sesión `/`
-redirige al login del hub y `/api/peers` da 401.
+**Desplegado el 2026-10-08 como `peer-map-00002-r7p`** (Cloud Run, `europe-west1`, proyecto
+`arctic-robot-474306-g3`, bucket `arctic-robot-474306-g3-peer-map`, detrás del login del hub), en
+**https://peers.themarkethub.app**. Sin sesión, `/api/health` da 200, `/` redirige al login del hub
+y `/api/peers` da 401.
 
-- **Falta el DNS**: el mapeo de dominio `peers.themarkethub.app` → `peer-map` está creado y espera
-  un registro en Cloudflare: **CNAME `peers` → `ghs.googlehosted.com`, en modo "solo DNS"** (sin
-  proxy), como el de `fundamentals`. Lo pone el usuario. Después el certificado tarda unos minutos.
+- **Dominio**: mapeo `peers.themarkethub.app` → `peer-map`, con un CNAME `peers` →
+  `ghs.googlehosted.com` en Cloudflare, en modo "solo DNS" (lo puso el agente desde el navegador,
+  con la sesión del usuario, el 2026-10-08). El certificado tardó unos 40 minutos.
+- **El enlace `Peers` está en la navegación de My Hub** (Tools) y desplegado en el portal
+  (`market-hub-00032-84z`), Fundamentals Lab (`fundamentals-lab-00016-kjp`, ya sin su página de
+  peers) y el radar del hub (`earnings-radar-hub-00011-h8g`). En el Playground está en el código
+  (`main`), sin desplegar: su despliegue lo lleva otra sesión.
 - **Sin ver con una sesión real**: el agente no inicia sesión. En local (sin login) está todo
   probado; en producción falta abrir la página y, sobre todo, **ver que Yahoo contesta desde Cloud
   Run para 1.506 empresas** y cuánto tarda con 1 CPU (en el portátil, 50 s). En los logs sale una
   línea `performance: N of M companies in X s`. Si Yahoo se niega, el mapa funciona igual, con
   los puntos en gris.
-- **El enlace `Peers` está en la navegación de My Hub** (Tools) del portal, de Fundamentals Lab,
-  y del radar, y esta web lleva la misma navegación con `Peers` marcado. En el Playground
-  el enlace está en el código (`main`); su despliegue lo lleva otra sesión.
 
 ### Qué ve el usuario
 
@@ -102,8 +103,8 @@ junto a Morgan Stanley o Bank of America (sin mirar por qué; Citi no está en e
 
 ## Siguientes pasos
 
-1. Poner el CNAME en Cloudflare y abrir https://peers.themarkethub.app con sesión. Mirar en los
-   logs que el refresco de precios funciona desde Cloud Run.
+1. Abrir https://peers.themarkethub.app con sesión y mirar en los logs que el refresco de precios
+   funciona desde Cloud Run.
 2. Si Yahoo frena las IP de Cloud Run: bajar el lote (`YAHOO_BATCH`), o leer los precios en local
    y subirlos al bucket a mano.
 3. Sacar el negocio de los informes con formato propio (Intel, GE, Citi...) y de los 40-F.
