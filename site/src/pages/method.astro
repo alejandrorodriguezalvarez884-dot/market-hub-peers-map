@@ -1,0 +1,82 @@
+---
+import Page from "../components/Page.astro";
+
+const spans = [
+	["Day", "The last price against the close of the session before. While the market is open it is the day so far."],
+	["Week", "The last close against the close five sessions before."],
+	["Month", "Against the close 21 sessions before."],
+	["YTD", "Against the last close of the year before."],
+	["1Y", "Against the close 252 sessions before."],
+];
+---
+
+<Page title="Method" description="Where the map comes from: the text it reads, how similarity is measured and how the price moves are counted.">
+	<div class="max-w-3xl">
+		<h1 class="text-[2rem] font-medium leading-tight tracking-tight text-ink-strong">Sources and method</h1>
+		<p class="mt-4 text-ink">
+			The map is computed by code, the same way for every company. No one places a company by hand, and no AI writes anything
+			on these pages.
+		</p>
+
+		<h2 class="sec sec-title mt-12">Sources</h2>
+		<ul class="mt-3 list-disc space-y-2 pl-5 text-ink">
+			<li><strong class="font-medium text-ink-strong">SEC EDGAR</strong>: the list of US-listed companies, each one's industry, and the text of its latest annual report (10-K, or 20-F for a foreign company).</li>
+			<li><strong class="font-medium text-ink-strong">Yahoo Finance</strong>: daily closing prices, for the colour of the dots.</li>
+			<li><strong class="font-medium text-ink-strong">BAAI bge-small-en-v1.5</strong>: an open text-embedding model, run on our own machine when the map is built.</li>
+		</ul>
+
+		<h2 class="sec sec-title mt-12">Which companies</h2>
+		<p class="mt-3 text-ink">
+			The first 1,725 companies of the SEC's list, which is ordered roughly by market value, that have a Business section to
+			read: about seven in eight. The others are not on the map. Some file no annual report of these kinds (Canadian
+			companies, and foreign ones traded over the counter); some lay their annual report out their own way, without a
+			separate Business section.
+		</p>
+
+		<h2 class="sec sec-title mt-12">Similarity</h2>
+		<p class="mt-3 text-ink">
+			The text read is the Business section of the annual report (Item 1 of a 10-K, Item 4 of a 20-F): what the company itself
+			says it does. The model turns it into a vector: the average over its passages, minus the average of all companies, so
+			that what every annual report says does not count. The similarity of two companies is the cosine between their vectors:
+			1 would be the same text, 0 nothing in common beyond what all reports share. Each company keeps its ten nearest.
+		</p>
+		<p class="mt-3 text-ink">
+			Similar means the texts are alike. Two companies can describe the same business and differ in size, results and
+			price; a bank's nearest are often banks that write about the same regulation. It says nothing about which company is
+			better, and it is not a list of alternatives to buy.
+		</p>
+
+		<h2 class="sec sec-title mt-12">The map</h2>
+		<p class="mt-3 text-ink">
+			A projection of those vectors onto a plane (t-SNE). Dots that are close are similar; the axes, and distances between
+			far-apart regions, mean nothing. The names on the map are the SEC industry that most companies of an area are filed
+			under. The map is rebuilt by hand, so a new annual report counts from the next rebuild.
+		</p>
+
+		<h2 class="sec sec-title mt-12">Price moves</h2>
+		<p class="mt-3 text-ink">
+			The colour of a dot is the change in the company's share price over the span chosen, without dividends: green up, red
+			down, grey around zero, stronger the bigger the move. The full colour is reached at 3% for a day, 6% for a week, 12% for
+			a month, 40% for the year to date and 60% for a year; beyond that the colour does not change, the figure does.
+		</p>
+		<dl class="mt-2 divide-y divide-line">
+			{spans.map(([term, text]) => (
+				<div class="grid gap-1 py-3 sm:grid-cols-[8rem_1fr] sm:gap-6">
+					<dt class="text-ink-strong">{term}</dt>
+					<dd class="text-sm leading-relaxed text-muted">{text}</dd>
+				</div>
+			))}
+		</dl>
+		<p class="mt-3 text-sm text-muted">
+			Prices are read again when someone opens the map and finds them more than fifteen minutes old with the market open, and
+			once after the close. They can be delayed. A foreign company's price is that of its shares traded in the US.
+		</p>
+
+		<h2 class="sec sec-title mt-12">What this is not</h2>
+		<p class="mt-3 text-ink">
+			This site describes texts and past prices. It does not recommend buying, selling or holding any security, does not set
+			price targets and does not forecast returns. That a company's neighbours rose, or that it fell while they did not, is
+			what happened, not a sign of what comes next. Data from third parties may be delayed or contain errors.
+		</p>
+	</div>
+</Page>

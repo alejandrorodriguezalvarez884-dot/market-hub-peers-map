@@ -1,0 +1,7 @@
+.env
+.venv/
+/data/
+site/node_modules/
+site/dist/
+site/.astro/
+.git/

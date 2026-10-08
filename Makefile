@@ -1,0 +1,46 @@
+# Everything is started from here, by hand. Nothing runs on a timer.
+#
+#   make            list the targets
+#   make dev        API (port 8000) + site with reload (port 4321): run `make api` and `make dev`
+#   make peers      rebuild the map on this machine
+#   make deploy     build and deploy the service to Cloud Run
+#
+# The service (site + API) runs on Cloud Run and only works when a visitor asks.
+
+SHELL := /bin/bash
+.DEFAULT_GOAL := help
+.PHONY: help install test check site api dev serve peers deploy
+
+help: ## List the targets
+	@grep -E '^[a-z]+:.*## ' $(MAKEFILE_LIST) | awk -F ':.*## ' '{printf "  make %-9s %s\n", $$1, $$2}'
+
+install: ## Install the Python and site dependencies
+	uv sync
+	cd site && npm ci
+
+test: ## Run the tests
+	uv run pytest
+
+check: test ## Tests plus the site's type check and build
+	cd site && npx astro check && npm run build
+
+site: ## Build the site into site/dist
+	cd site && npm run build
+
+api: ## Run the API alone at http://localhost:8000, with reload (pair it with `make dev`)
+	HUB_URL= PEERMAP_ALLOWED_ORIGINS=http://localhost:4321 uv run uvicorn peermap.api:create_app --factory --reload --port 8000
+
+dev: ## Run the site at http://localhost:4321 with reload (it calls the API on port 8000)
+	cd site && PUBLIC_API_URL=http://localhost:8000 npm run dev
+
+serve: site ## Run site and API together at http://localhost:8080, as in production but without sign-in
+	HUB_URL= PEERMAP_STATIC_DIR=site/dist uv run uvicorn peermap.api:create_app --factory --port 8080
+
+peers: ## Rebuild the map on this machine (SEC filings + a local model, no paid API; about an hour and a half, picks up where it stopped)
+	uv sync --group build
+	uv run peermap fetch
+	uv run peermap embed
+	uv run peermap build
+
+deploy: ## Build and deploy the service to Cloud Run (see scripts/deploy-cloudrun.sh)
+	./scripts/deploy-cloudrun.sh

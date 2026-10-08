@@ -1,0 +1,290 @@
+---
+// The map: companies placed by how alike their own descriptions of their business are, each dot
+// coloured by how its price has moved over the span chosen.
+import Page from "../components/Page.astro";
+import { SITE_NAME } from "../lib/site";
+---
+
+<Page title={SITE_NAME} description="A map of US-listed companies by what they say they do: each one next to the companies whose business description, in their annual reports, reads most like its own, and coloured by how its price has moved.">
+	<h1 class="text-[2rem] font-medium leading-tight tracking-tight text-ink-strong">Peer Map</h1>
+	<p class="mt-2 max-w-2xl text-ink">
+		Each dot is a company. Two dots are close when the companies describe their business in similar words in their annual
+		reports, whatever industry they are filed under. The colour is how the price has moved.
+	</p>
+	<div class="mt-6 flex flex-col gap-x-10 gap-y-5 lg:flex-row lg:items-end lg:justify-between">
+		<form id="find" class="relative w-full max-w-md" role="search">
+			<label class="sr-only" for="find-input">Ticker or company name</label>
+			<div class="flex items-center gap-2 rounded-[3px] border border-line-strong p-1 pl-3 transition focus-within:border-ink-strong">
+				<svg class="h-4 w-4 flex-none text-muted" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+					<circle cx="9" cy="9" r="6"></circle>
+					<path d="m14 14 4 4" stroke-linecap="round"></path>
+				</svg>
+				<input id="find-input" type="search" autocomplete="off" spellcheck="false" placeholder="Company or ticker: Apple, MSFT, KO…"
+					class="min-w-0 flex-1 bg-transparent py-1 text-sm text-ink-strong placeholder:text-faint focus:outline-none [&::-webkit-search-cancel-button]:hidden" />
+				<button type="submit" class="btn btn-primary flex-none px-3 py-1.5">Find</button>
+			</div>
+			<ul class="search-list" role="listbox" hidden></ul>
+		</form>
+		<div class="min-w-0">
+			<div class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+				<span class="text-[13px] text-muted">Price move</span>
+				<div id="periods" role="group" aria-label="Span of the price move"></div>
+			</div>
+			<div class="mt-2 flex items-center gap-2 text-[12px] text-muted">
+				<span id="legend-low" class="num"></span>
+				<span id="legend-bar" class="inline-block h-1.5 w-36 rounded-full"></span>
+				<span id="legend-high" class="num"></span>
+				<span id="legend-source" class="ml-2 min-w-0 truncate"></span>
+			</div>
+		</div>
+	</div>
+	<p id="note" class="mt-3 text-sm text-muted" hidden></p>
+	<div id="peers" class="mt-6"></div>
+	<noscript><p class="mt-6 text-sm text-muted">This page needs JavaScript.</p></noscript>
+</Page>
+
+<script>
+	import { add, companyTabs, h } from "../lib/dom";
+	import { shortDate, signedPct } from "../lib/format";
+	import { moveColor, peerMap } from "../lib/peermap";
+	import { API, compareUrl, fundamentalsUrl, hubQuoteUrl, mapUrl, radarUrl, tidyName } from "../lib/site";
+	import type { PerformanceDoc, PeerDetail, PeerOverview, PeriodKey } from "../lib/types";
+
+	// The spans, with the move that gets the full colour in each: a 3% day is as strong as a 60% year.
+	const PERIODS: { key: PeriodKey; label: string; cap: number }[] = [
+		{ key: "1d", label: "Day", cap: 0.03 },
+		{ key: "1w", label: "Week", cap: 0.06 },
+		{ key: "1m", label: "Month", cap: 0.12 },
+		{ key: "ytd", label: "YTD", cap: 0.4 },
+		{ key: "1y", label: "1Y", cap: 0.6 },
+	];
+	const toneOf = (v: number | null | undefined) => (v == null ? "text-muted" : v > 0 ? "text-up" : v < 0 ? "text-down" : "text-ink-strong");
+
+	const root = document.getElementById("peers")!;
+	const note = document.getElementById("note")!;
+	const say = (text: string) => ((note.textContent = text), (note.hidden = !text));
+
+	function start(data: PeerOverview) {
+		const pts = data.companies;
+		const index = new Map(pts.map((p, i) => [p.ticker, i]));
+		const panel = h("aside", "min-w-0");
+		const map = peerMap(data, (i) => choose(i));
+		root.replaceChildren(add(h("div", "grid min-w-0 gap-x-10 gap-y-8 lg:grid-cols-[minmax(0,1fr)_22rem]"), map.el, panel));
+
+		const query = new URLSearchParams(location.search);
+		let chosen: number | null = null;
+		let period = PERIODS.find((p) => p.key === query.get("p")) ?? PERIODS[0];
+		let prices: PerformanceDoc | null = null;
+		// A company's return over one span, or over each of them.
+		const moves = (i: number) => prices?.returns[pts[i].ticker] ?? null;
+		const move = (i: number, key = period.key) => moves(i)?.[prices!.periods.indexOf(key)] ?? null;
+
+		// --- The colour of the dots ---------------------------------------------------------------
+		const periods = document.getElementById("periods")!;
+		const buttons = PERIODS.map((p) => {
+			const b = h("button", "range-btn", p.label);
+			b.type = "button";
+			b.addEventListener("click", () => ((period = p), paint(), describe(), address()));
+			return b;
+		});
+		periods.replaceChildren(...buttons);
+		document.getElementById("legend-bar")!.style.background =
+			`linear-gradient(90deg, ${[-1, -0.5, -0.15, 0, 0.15, 0.5, 1].map((v) => moveColor(v, 1)).join(", ")})`;
+
+		function paint() {
+			buttons.forEach((b, k) => b.setAttribute("aria-pressed", String(PERIODS[k] === period)));
+			document.getElementById("legend-low")!.textContent = signedPct(-period.cap, 0);
+			document.getElementById("legend-high")!.textContent = signedPct(period.cap, 0);
+			map.colour(prices ? { values: pts.map((_, i) => move(i)), cap: period.cap, label: period.label } : null);
+		}
+
+		const source = document.getElementById("legend-source")!;
+		function stamp(updating = false) {
+			const at = prices?.as_of ? new Date(prices.as_of).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+			source.textContent = [at ? `Yahoo Finance, ${at}` : "", updating ? "updating…" : ""].filter(Boolean).join(" · ");
+		}
+
+		// Opening the page never asks Yahoo: it shows what there is and, if that is old, asks the
+		// service to read the prices again (about a minute) and repaints.
+		async function loadPrices() {
+			try {
+				const res = await fetch(`${API}/api/performance`);
+				if (!res.ok) return;
+				prices = (await res.json()) as PerformanceDoc;
+				paint(), describe(), stamp(prices.stale);
+				if (!prices.stale) return;
+				const fresh = await fetch(`${API}/api/performance/refresh`, { method: "POST" });
+				if (fresh.ok) prices = (await fresh.json()) as PerformanceDoc;
+				paint(), describe(), stamp();
+				if (!fresh.ok && !prices.as_of) source.textContent = "Prices are not available right now.";
+			} catch {
+				stamp();
+			}
+		}
+
+		// --- The company chosen -------------------------------------------------------------------
+		function describe() {
+			const i = chosen;
+			if (i === null) {
+				panel.replaceChildren(
+					h("p", "text-muted", "Choose a company on the map, or find it by name."),
+					h("p", "mt-3 text-[12.5px] text-muted", `${pts.length.toLocaleString("en-US")} companies. Drag to move; the buttons, a pinch or a double click zoom.`),
+				);
+				return;
+			}
+			const c = pts[i];
+			const nearest = c.peers.map(([j, s]) => ({ j, s, p: pts[j] }));
+
+			const spans = h("div", "mt-5 grid grid-cols-5 gap-px overflow-hidden rounded-[3px] bg-line");
+			for (const p of PERIODS) {
+				const v = move(i, p.key);
+				spans.append(add(h("div", "bg-page px-1 py-1.5 text-center"),
+					h("div", `text-[11px] ${p === period ? "font-semibold text-ink-strong" : "text-muted"}`, p.label),
+					h("div", `num mt-0.5 text-[12.5px] ${toneOf(v)}`, signedPct(v, p.key === "1d" ? 2 : 1))));
+			}
+
+			const list = h("ol", "divide-y divide-line");
+			for (const n of nearest) {
+				const row = h("button", "group flex w-full items-baseline gap-3 py-2.5 text-left");
+				row.type = "button";
+				row.addEventListener("click", () => choose(n.j));
+				const v = move(n.j);
+				add(row,
+					h("span", "num w-14 flex-none text-[13px] text-ink-strong group-hover:underline", n.p.ticker),
+					add(h("span", "min-w-0 flex-1"), h("span", "block truncate text-sm text-ink", tidyName(n.p.name)), h("span", "block truncate text-[12.5px] text-muted", n.p.industry)),
+					h("span", "num w-9 flex-none text-right text-[13px] text-muted", n.s.toFixed(2)),
+					h("span", `num w-[4.2rem] flex-none text-right text-[13px] ${toneOf(v)}`, signedPct(v, period.key === "1d" ? 2 : 1)));
+				list.append(add(h("li"), row));
+			}
+			const compare = add(h("a", "btn btn-ghost"), `Compare with the nearest ${Math.min(4, nearest.length)}`);
+			compare.href = compareUrl([c.ticker, ...nearest.slice(0, 4).map((n) => n.p.ticker)]);
+			const filing = add(h("a", "link"), `${c.form} filed ${shortDate(c.filed)}`);
+			filing.href = c.url;
+			filing.target = "_blank";
+			filing.rel = "noopener";
+			panel.replaceChildren(
+				h("p", "text-[13px] text-muted", [c.ticker, c.industry].filter(Boolean).join(" · ")),
+				h("h2", "mt-1 text-xl font-medium leading-snug text-ink-strong", tidyName(c.name)),
+				add(h("div", "mt-3"), companyTabs([
+					{ label: "Price", href: hubQuoteUrl(c.ticker) },
+					{ label: "Fundamentals", href: fundamentalsUrl(c.ticker) },
+					{ label: "Results release", href: radarUrl(c.ticker) },
+				])),
+				spans,
+				add(h("section", "sec mt-8"),
+					add(h("div", "sec-head"), h("h3", "sec-title", "Most similar business descriptions"), h("span", "sec-note", `Similarity · ${period.label}`)),
+					list),
+				add(h("div", "mt-5"), compare),
+				add(h("p", "mt-4 text-[12.5px] text-muted"), "Source: ", filing, ", SEC EDGAR"),
+			);
+		}
+
+		const address = () => history.replaceState(null, "", mapUrl(chosen === null ? null : pts[chosen].ticker, period === PERIODS[0] ? null : period.key));
+
+		function choose(i: number | null) {
+			say("");
+			chosen = i;
+			map.select(i);
+			describe();
+			address();
+			document.title = i === null ? "Peer Map — Market Hub" : `${pts[i].ticker} peers — Peer Map — Market Hub`;
+		}
+
+		// --- Finding a company: the map's own companies, nothing asked from the service ------------
+		const form = document.getElementById("find") as HTMLFormElement;
+		const input = form.querySelector("input")!;
+		const list = form.querySelector<HTMLElement>(".search-list")!;
+		const names = pts.map((p) => tidyName(p.name).toLowerCase());
+		let found: number[] = [];
+		let active = -1;
+
+		function search(q: string): number[] {
+			const t = q.trim().toUpperCase(), n = q.trim().toLowerCase();
+			if (!t) return [];
+			const groups: number[][] = [[], [], [], [], []];
+			pts.forEach((p, i) => {
+				if (p.ticker === t) groups[0].push(i);
+				else if (names[i].startsWith(n)) groups[t.length > 4 ? 1 : 2].push(i);
+				else if (p.ticker.startsWith(t)) groups[t.length > 4 ? 2 : 1].push(i);
+				else if (names[i].includes(` ${n}`)) groups[3].push(i);
+				else if (n.length >= 3 && names[i].includes(n)) groups[4].push(i);
+			});
+			// The map's companies come ordered roughly by size, so the bigger ones lead each group.
+			return groups.flat().slice(0, 8);
+		}
+
+		function suggest() {
+			list.replaceChildren(...found.map((i, k) => {
+				const li = h("li");
+				li.setAttribute("role", "option");
+				li.setAttribute("aria-selected", String(k === active));
+				add(li, h("span", "min-w-0 truncate text-ink", tidyName(pts[i].name)), h("span", "num flex-none text-xs text-muted", pts[i].ticker));
+				li.addEventListener("pointerdown", (e) => (e.preventDefault(), pick(i)));
+				return li;
+			}));
+			list.hidden = found.length === 0;
+		}
+
+		function pick(i: number) {
+			input.value = "";
+			found = [];
+			suggest();
+			choose(i);
+		}
+
+		input.addEventListener("input", () => ((found = search(input.value)), (active = -1), say(""), suggest()));
+		input.addEventListener("keydown", (e) => {
+			if (e.key === "Escape") return void (list.hidden = true);
+			if ((e.key !== "ArrowDown" && e.key !== "ArrowUp") || !found.length) return;
+			e.preventDefault();
+			active = (active + (e.key === "ArrowDown" ? 1 : -1) + found.length) % found.length;
+			suggest();
+		});
+		input.addEventListener("focus", () => (list.hidden = found.length === 0));
+		input.addEventListener("blur", () => (list.hidden = true));
+		form.addEventListener("submit", (e) => {
+			e.preventDefault();
+			const q = input.value.trim();
+			if (!q) return input.focus();
+			const hit = (found.length ? found : search(q))[Math.max(active, 0)];
+			if (hit !== undefined) pick(hit);
+			else say(`No company on the map matches "${q}". It has the largest US-listed companies whose latest annual report carries a Business section.`);
+		});
+
+		// A ticker in the address may be a second share class (GOOG for GOOGL): the API knows which
+		// company it is.
+		async function open(ticker: string) {
+			const wanted = ticker.trim().toUpperCase();
+			if (!wanted) return choose(null);
+			let i = index.get(wanted);
+			if (i === undefined) {
+				try {
+					const res = await fetch(`${API}/api/peers/${encodeURIComponent(wanted)}`);
+					if (res.ok) i = index.get(((await res.json()) as PeerDetail).ticker);
+				} catch {
+					// Not found is said below, whatever the reason.
+				}
+			}
+			choose(i ?? null);
+			if (i === undefined) say(`${wanted} is not on the map. It has the largest US-listed companies whose latest annual report carries a Business section.`);
+		}
+
+		paint();
+		open(query.get("t") ?? "");
+		loadPrices();
+	}
+
+	async function load() {
+		root.replaceChildren(h("div", "skeleton h-[420px] sm:h-[560px] lg:h-[640px]"));
+		try {
+			const res = await fetch(`${API}/api/peers`);
+			if (!res.ok) throw new Error(String(res.status));
+			const data = (await res.json()) as PeerOverview;
+			if (!data.companies.length) return root.replaceChildren(h("p", "text-muted", "The map has not been built yet."));
+			start(data);
+		} catch {
+			root.replaceChildren(h("p", "border-l-2 border-down pl-4 text-down", "The map could not be loaded. Try again in a moment."));
+		}
+	}
+	load();
+</script>
