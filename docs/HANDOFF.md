@@ -19,10 +19,10 @@ Decisiones del usuario (2026-10-08):
 
 ## Dónde estamos
 
-> 2026-10-14: **Options en la barra de My Hub** (sin desplegar). "Tools" de la barra lateral lleva
+> 2026-10-14: **Options en la barra de My Hub** (desplegado como `peer-map-00003-5sn`, con la configuración del servicio idéntica). "Tools" de la barra lateral lleva
 > una herramienta más, **Options** (Options Lab, https://options.themarkethub.app, repo
-> `market-hub-options`): cadenas de opciones leídas con detalle y estrategias. **No desplegar
-> hasta que ese subdominio responda por HTTPS**: hasta entonces el enlace no abre.
+> `market-hub-options`): cadenas de opciones leídas con detalle y estrategias. Desplegado cuando ese
+> subdominio ya respondía por HTTPS.
 
 **Desplegado el 2026-10-08 como `peer-map-00002-r7p`** (Cloud Run, `europe-west1`, proyecto
 `arctic-robot-474306-g3`, bucket `arctic-robot-474306-g3-peer-map`, detrás del login del hub), en
