@@ -8,7 +8,7 @@
 # HUB_URL (the Market Hub address) admits only people signed in there: the service reads the
 # hub's session cookie with the hub's secret (Secret Manager: market-hub-session-secret).
 #
-# Optional overrides: GCP_PROJECT, GCP_REGION, SERVICE_NAME, MAX_INSTANCES.
+# Optional overrides: GCP_PROJECT, GCP_REGION, SERVICE_NAME, MIN_INSTANCES, MAX_INSTANCES.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -23,6 +23,8 @@ command -v gcloud >/dev/null || fail "gcloud is not installed."
 GCP_PROJECT="${GCP_PROJECT:-$(gcloud config get-value project 2>/dev/null || true)}"
 GCP_REGION="${GCP_REGION:-europe-west1}"
 SERVICE_NAME="${SERVICE_NAME:-peer-map}"
+# One instance stays warm so nobody waits for a cold start.
+MIN_INSTANCES="${MIN_INSTANCES:-1}"
 MAX_INSTANCES="${MAX_INSTANCES:-2}"
 ENV_FILE=".env"
 
@@ -90,7 +92,7 @@ gcp run deploy "$SERVICE_NAME" \
   --port 8080 \
   --cpu 1 \
   --memory 1Gi \
-  --min-instances 0 \
+  --min-instances "$MIN_INSTANCES" \
   --max-instances "$MAX_INSTANCES" \
   --timeout 300 \
   ${SECRETS[@]+"${SECRETS[@]}"} \

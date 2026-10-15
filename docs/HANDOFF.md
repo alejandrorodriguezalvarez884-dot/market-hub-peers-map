@@ -19,6 +19,12 @@ Decisiones del usuario (2026-10-08):
 
 ## Dónde estamos
 
+> 2026-10-15: **Una instancia siempre encendida.** Para el lanzamiento, por decisión del usuario,
+> `peer-map` tiene `--min-instances 1` (revisión `peer-map-00006-ff8`, hecha con `gcloud run services update`,
+> sin reconstruir): nadie espera un arranque en frío y las cachés en memoria duran. Cuesta
+> tener la instancia parada pero viva todo el mes. `scripts/deploy-cloudrun.sh` lo fija con
+> `MIN_INSTANCES` (1 por defecto; `MIN_INSTANCES=0 make deploy` vuelve a escalar a cero).
+
 > 2026-10-15: **Sin enlace al código fuente.** El pie de página ya no lleva "Source" (el enlace al
 > repo de GitHub) y `REPO_URL` ya no existe en `site/src/lib/`: la web no enlaza ni menciona el
 > código, por decisión del usuario. **Desplegado** como `peer-map-00005-bcv`, con

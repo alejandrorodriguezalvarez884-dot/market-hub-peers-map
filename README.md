@@ -63,4 +63,4 @@ hay un refresco a la vez. Se guardan en un bucket.
 ## Despliegue
 
 `make deploy` construye la imagen con Cloud Build y la despliega en Cloud Run (servicio
-`peer-map`, web y API en un contenedor, escala a cero). Nada está programado ni en GitHub Actions.
+`peer-map`, web y API en un contenedor, con una instancia siempre encendida). Nada está programado ni en GitHub Actions.
