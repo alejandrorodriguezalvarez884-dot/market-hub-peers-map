@@ -19,6 +19,10 @@ Decisiones del usuario (2026-10-08):
 
 ## Dónde estamos
 
+> 2026-10-15: **Sin enlace al código fuente.** El pie de página ya no lleva "Source" (el enlace al
+> repo de GitHub) y `REPO_URL` ya no existe en `site/src/lib/`: la web no enlaza ni menciona el
+> código, por decisión del usuario. **Sin desplegar**: llega a la web con el próximo `make deploy`.
+
 > 2026-10-14: **Options en la barra de My Hub** (desplegado como `peer-map-00003-5sn`, con la configuración del servicio idéntica). "Tools" de la barra lateral lleva
 > una herramienta más, **Options** (Options Lab, https://options.themarkethub.app, repo
 > `market-hub-options`): cadenas de opciones leídas con detalle y estrategias. Desplegado cuando ese

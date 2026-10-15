@@ -2,7 +2,7 @@
 // Shell shared by every page. The tool is a section of My Hub, the private area of Market Hub:
 // the portal's private navigation at the side (HubNav), and above the page the tool's own bar.
 import Layout from "../layouts/Layout.astro";
-import { AUTHOR_URL, HUB_URL, REPO_URL, SITE_NAME, link } from "../lib/site";
+import { AUTHOR_URL, HUB_URL, SITE_NAME, link } from "../lib/site";
 import HubNav from "./HubNav.astro";
 
 interface Props {
@@ -49,7 +49,6 @@ const pages = [
 					</p>
 					<div class="flex flex-wrap items-start gap-x-5 gap-y-1">
 						<a href={`${HUB_URL}/privacy/`} class="hover:text-ink-strong">Privacy</a>
-						<a href={REPO_URL} class="hover:text-ink-strong">Source</a>
 						<a href={AUTHOR_URL} class="hover:text-ink-strong">Built by Alejandro Rodríguez Álvarez</a>
 					</div>
 				</div>

@@ -1,6 +1,5 @@
 // Site-wide constants and links.
 export const SITE_NAME = "Peer Map";
-export const REPO_URL = "https://github.com/alejandrorodriguezalvarez884-dot/market-hub-peers-map";
 export const AUTHOR_URL = "https://alejandrorodriguez.dev/";
 
 // The tool is a section of Market Hub: a company here links to the same company in the portal,
