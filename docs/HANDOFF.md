@@ -19,6 +19,11 @@ Decisiones del usuario (2026-10-08):
 
 ## Dónde estamos
 
+> 2026-10-17: **De vuelta a escalar a cero.** Por decisión del usuario, `peer-map` vuelve a
+> `--min-instances 0` (revisión `peer-map-00007-9gx`, hecha con `gcloud run services update`, sin
+> reconstruir), y `scripts/deploy-cloudrun.sh` pone 0 por defecto (`MIN_INSTANCES=1 make deploy`
+> deja una instancia encendida). La nota de abajo queda como historia.
+
 > 2026-10-15: **Una instancia siempre encendida.** Para el lanzamiento, por decisión del usuario,
 > `peer-map` tiene `--min-instances 1` (revisión `peer-map-00006-ff8`, hecha con `gcloud run services update`,
 > sin reconstruir): nadie espera un arranque en frío y las cachés en memoria duran. Cuesta
